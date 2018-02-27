@@ -14,6 +14,8 @@ class ViewController: NSViewController,GCDAsyncSocketDelegate {
     let serverPort: UInt16 = 8080
     var host = "127.0.0.1"
     var sendSocket:GCDAsyncSocket?
+    var socketArray = [GCDAsyncSocket]()
+    let delegateQueue = DispatchQueue(label: "delegagteQueue")
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -22,7 +24,7 @@ class ViewController: NSViewController,GCDAsyncSocketDelegate {
     
     func accept(){
         
-        sendSocket = GCDAsyncSocket(delegate: self, delegateQueue: DispatchQueue.global(qos: .default))
+        sendSocket = GCDAsyncSocket(delegate: self, delegateQueue: delegateQueue)
         do {
             try sendSocket?.accept(onPort: UInt16(serverPort))
             print("accept--成功")
@@ -31,12 +33,68 @@ class ViewController: NSViewController,GCDAsyncSocketDelegate {
         }
     }
 
-    
     func socket(_ sock: GCDAsyncSocket, didRead data: Data, withTag tag: Int) {
         //后台给的是字符串的时候
-        let str = String.init(data: data, encoding: .utf8)
-        print(str as Any)
-        sendSocket?.readData(withTimeout: -1, tag: 0)
+        if let str = String.init(data: data, encoding: .utf8) {
+            print("read str " + str)
+            let resStr = self.response(for: str)
+            print("res:\(resStr ?? "")")
+            if let resData = resStr?.data(using: String.Encoding.utf8){
+                print("write res for \(str)")
+                sock.write(resData, withTimeout: -1, tag: 0)
+            }
+        }
+        sock.readData(withTimeout: -1, tag: 0)
+    }
+    
+    func socket(_ sock: GCDAsyncSocket, didAcceptNewSocket newSocket: GCDAsyncSocket) {
+        print("connect new socket")
+        socketArray.append(newSocket) //保持新连接的client 连接
+        newSocket.readData(withTimeout: -1, tag: 0)
+    }
+    
+    func isPrimeNumber(num:Int)->Bool {
+        
+        //        print("before sleep : \(Date().timeIntervalSince1970)")
+        //        let sleepInterval = 10.0 * Double(arc4random_uniform(1000)) / 1000.0
+        //        sleep(UInt32(sleepInterval))
+        //        print("after sleep : \(Date().timeIntervalSince1970)")
+        
+        guard num > 1 else {
+            return false
+        }
+        if num == 2 { return true }
+        if num % 2 == 0 { return false }
+        let qurt = sqrt(Double(num))
+        let interval = 2
+        for index in stride(from: 3, to: Int(qurt) + 1, by: interval) {
+            // index -> 3,5,7, ...
+            if num % index == 0 {return false}
+        }
+        return true
+    }
+    
+    
+    func response(for requestStr:String) -> String?{
+        
+        var resultStr = ""
+        for sigleReuqestStr in requestStr.components(separatedBy: "\r\n") {
+            if sigleReuqestStr.count == 0 {continue}
+            let requestItems = sigleReuqestStr.components(separatedBy: "\t")
+            if requestItems.count == 2 {
+                var res = ""
+                if self.isPrimeNumber(num: Int(requestItems.last!) ?? 1){
+                    res = "\tyes\r\n"
+                }else {
+                    res = "\tno\r\n"
+                }
+                 resultStr.append("\(requestItems.first!)" + res)
+            }else {
+                print("\(sigleReuqestStr) is error")
+                return nil
+            }
+        }
+        return resultStr
     }
 }
 
