@@ -1,0 +1,6 @@
+framework module Pods_TcpServer {
+  umbrella header "Pods-TcpServer-umbrella.h"
+
+  export *
+  module * { export * }
+}
