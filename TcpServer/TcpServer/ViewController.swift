@@ -16,6 +16,14 @@ class ViewController: NSViewController,GCDAsyncSocketDelegate {
     var sendSocket:GCDAsyncSocket?
     var socketArray = [GCDAsyncSocket]()
     let delegateQueue = DispatchQueue(label: "delegagteQueue")
+    let resPonseQueue:DispatchQueue = {
+        let label = "resPonseQueue"
+        let qos =  DispatchQoS.default
+        let attributes = DispatchQueue.Attributes.concurrent
+        let autoreleaseFrequency = DispatchQueue.AutoreleaseFrequency.never
+        let queue = DispatchQueue(label: label, qos: qos, attributes: attributes, autoreleaseFrequency: autoreleaseFrequency, target: nil)
+       return queue
+    }()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -34,14 +42,17 @@ class ViewController: NSViewController,GCDAsyncSocketDelegate {
     }
 
     func socket(_ sock: GCDAsyncSocket, didRead data: Data, withTag tag: Int) {
-        //后台给的是字符串的时候
+        
         if let str = String.init(data: data, encoding: .utf8) {
-            print("read str " + str)
-            let resStr = self.response(for: str)
-            print("res:\(resStr ?? "")")
-            if let resData = resStr?.data(using: String.Encoding.utf8){
-                print("write res for \(str)")
-                sock.write(resData, withTimeout: -1, tag: 0)
+            resPonseQueue.async {[weak sock] in
+                let sSock = sock
+                print("read str " + str)
+                let resStr = self.response(for: str)
+                print("res:\(resStr ?? "")")
+                if let resData = resStr?.data(using: String.Encoding.utf8){
+                    print("write res for \(str)")
+                    sSock?.write(resData, withTimeout: -1, tag: 0)
+                }
             }
         }
         sock.readData(withTimeout: -1, tag: 0)
@@ -55,10 +66,8 @@ class ViewController: NSViewController,GCDAsyncSocketDelegate {
     
     func isPrimeNumber(num:Int)->Bool {
         
-        //        print("before sleep : \(Date().timeIntervalSince1970)")
-        //        let sleepInterval = 10.0 * Double(arc4random_uniform(1000)) / 1000.0
-        //        sleep(UInt32(sleepInterval))
-        //        print("after sleep : \(Date().timeIntervalSince1970)")
+        let sleepInterval = 10.0 * Double(arc4random_uniform(1000)) / 1000.0
+        sleep(UInt32(sleepInterval))
         
         guard num > 1 else {
             return false
