@@ -10,7 +10,8 @@ import UIKit
 import CocoaAsyncSocket
 
 class ViewController: UIViewController,GCDAsyncSocketDelegate {
-
+    
+    let timeOut = 10 // 超时时间
     let serverPort: UInt16 = 8080
     var host = "192.168.3.20"
     var sendSocket:GCDAsyncSocket?
@@ -24,7 +25,7 @@ class ViewController: UIViewController,GCDAsyncSocketDelegate {
         let serviceStr: NSMutableString = NSMutableString()
         serviceStr.append("\(1)")
         serviceStr.append("\r\n")
-        sendSocket?.write(serviceStr.data(using: String.Encoding.utf8.rawValue)!, withTimeout: -1, tag: 0)
+        sendSocket?.write(serviceStr.data(using: String.Encoding.utf8.rawValue)!, withTimeout: TimeInterval(timeOut), tag: 0)
         
         print("send click")
     }
@@ -33,7 +34,7 @@ class ViewController: UIViewController,GCDAsyncSocketDelegate {
         super.viewDidLoad()
         startDate = Date()
         self.prepareFile()
-        self.writeRandomNumbers(totalNum: Int(10000), to: self.randomNumbersFileURL)
+        self.writeRandomNumbers(totalNum: Int(10), to: self.randomNumbersFileURL)
         self.connect()
     }
     
@@ -112,17 +113,18 @@ class ViewController: UIViewController,GCDAsyncSocketDelegate {
         //后台给的是字符串的时候
         let str = String.init(data: data, encoding: .utf8)
         print(str as Any)
+        
         self.write(stringToWrite: str!, to: self.primeCheckFileURL)
         let pastSeconds = Date().timeIntervalSince(self.startDate)
         print("time pasted: \(pastSeconds)")
-        sendSocket?.readData(withTimeout: -1, tag: 0)
+        sendSocket?.readData(withTimeout: TimeInterval(timeOut), tag: 0)
     }
     
     
     func socket(_ sock: GCDAsyncSocket, didConnectToHost host: String, port: UInt16) {
         print(host)
         print("连接成功")
-        sendSocket?.readData(to: GCDAsyncSocket.lfData(), withTimeout: -1, tag: 0)
+        sendSocket?.readData(to: GCDAsyncSocket.lfData(), withTimeout: TimeInterval(timeOut), tag: 0)
         self.sendFile(fileURL: self.randomNumbersFileURL) // 发送数据
     }
     
